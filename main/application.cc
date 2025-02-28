@@ -353,15 +353,18 @@ void Application::Start() {
     protocol_ = std::make_unique<MqttProtocol>();
 #endif
     protocol_->OnNetworkError([this](const std::string& message) {
+        ESP_LOGD(TAG, "Network error: %s", message.c_str());
         Alert(Lang::Strings::ERROR, message.c_str(), "sad");
     });
     protocol_->OnIncomingAudio([this](std::vector<uint8_t>&& data) {
+        ESP_LOGD(TAG, "Incoming audio data, size: %d", data.size());
         std::lock_guard<std::mutex> lock(mutex_);
         if (device_state_ == kDeviceStateSpeaking) {
             audio_decode_queue_.emplace_back(std::move(data));
         }
     });
     protocol_->OnAudioChannelOpened([this, codec, &board]() {
+        ESP_LOGI(TAG, "Audio channel opened");
         board.SetPowerSaveMode(false);
         if (protocol_->server_sample_rate() != codec->output_sample_rate()) {
             ESP_LOGW(TAG, "Server sample rate %d does not match device output sample rate %d, resampling may cause distortion",
@@ -374,6 +377,7 @@ void Application::Start() {
         protocol_->SendIotDescriptors(thing_manager.GetDescriptorsJson());
     });
     protocol_->OnAudioChannelClosed([this, &board]() {
+        ESP_LOGI(TAG, "Audio channel closed");
         board.SetPowerSaveMode(true);
         Schedule([this]() {
             auto display = Board::GetInstance().GetDisplay();
@@ -382,6 +386,7 @@ void Application::Start() {
         });
     });
     protocol_->OnIncomingJson([this, display](const cJSON* root) {
+        ESP_LOGD(TAG, "OnIncomingJson");
         // Parse JSON data
         auto type = cJSON_GetObjectItem(root, "type");
         if (strcmp(type->valuestring, "tts") == 0) {
@@ -448,11 +453,11 @@ void Application::Start() {
     ota_.SetHeader("Client-Id", board.GetUuid());
     ota_.SetHeader("X-Language", Lang::CODE);
 
-    xTaskCreate([](void* arg) {
-        Application* app = (Application*)arg;
-        app->CheckNewVersion();
-        vTaskDelete(NULL);
-    }, "check_new_version", 4096 * 2, this, 1, nullptr);
+    // xTaskCreate([](void* arg) {
+    //     Application* app = (Application*)arg;
+    //     app->CheckNewVersion();
+    //     vTaskDelete(NULL);
+    // }, "check_new_version", 4096 * 2, this, 1, nullptr);
 
 
 #if CONFIG_USE_AUDIO_PROCESSING
