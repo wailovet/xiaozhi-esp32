@@ -7,7 +7,7 @@
 #define AUDIO_OUTPUT_SAMPLE_RATE 24000
 
 // 如果使用 Duplex I2S 模式，请注释下面一行
-#define AUDIO_I2S_METHOD_SIMPLEX
+// #define AUDIO_I2S_METHOD_SIMPLEX
 
 #ifdef AUDIO_I2S_METHOD_SIMPLEX
 

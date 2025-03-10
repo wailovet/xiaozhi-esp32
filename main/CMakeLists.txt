@@ -5,6 +5,7 @@ set(SOURCES "audio_codecs/audio_codec.cc"
             "audio_codecs/es8388_audio_codec.cc"
             "audio_codecs/cores3_audio_codec.cc"
             "audio_codecs/tcircles3_audio_codec.cc"
+            "audio_codecs/bt_audio_codec.cc"
             "led/single_led.cc"
             "led/circular_strip.cc"
             "display/display.cc"
@@ -115,7 +116,7 @@ elseif(CONFIG_BOARD_TYPE_XINGZHI_Cube_1_54TFT_ML307)
 endif()
 file(GLOB BOARD_SOURCES 
     ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD_TYPE}/*.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD_TYPE}/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD_TYPE}/*.c 
 )
 list(APPEND SOURCES ${BOARD_SOURCES})
 
@@ -139,7 +140,7 @@ endif()
 # 定义生成路径
 set(LANG_JSON "${CMAKE_CURRENT_SOURCE_DIR}/assets/${LANG_DIR}/language.json")
 set(LANG_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/assets/lang_config.h")
-file(GLOB ASSETS ${CMAKE_CURRENT_SOURCE_DIR}/assets/${LANG_DIR}/*.p3)
+file(GLOB ASSETS ${CMAKE_CURRENT_SOURCE_DIR}/assets/*.html ${CMAKE_CURRENT_SOURCE_DIR}/assets/${LANG_DIR}/*.p3)
 
 # 如果目标芯片是 ESP32，则排除特定文件
 if(CONFIG_IDF_TARGET_ESP32)
@@ -149,12 +150,14 @@ if(CONFIG_IDF_TARGET_ESP32)
                              "audio_codecs/es8388_audio_codec.cc")
 endif()
 
+
 idf_component_register(SRCS ${SOURCES}
                     EMBED_FILES ${ASSETS}
                     INCLUDE_DIRS ${INCLUDE_DIRS}
                     WHOLE_ARCHIVE
                     )
 
+target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-error -Wno-format -fpermissive)
 # 使用 target_compile_definitions 来定义 BOARD_TYPE
 target_compile_definitions(${COMPONENT_LIB}
                     PRIVATE BOARD_TYPE=\"${BOARD_TYPE}\"

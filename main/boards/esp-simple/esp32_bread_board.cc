@@ -14,17 +14,51 @@
 #include <esp_log.h>
 #include <driver/i2c_master.h>
 
+#include "esp_system.h"
+#include "esp_bt.h"
+#include "esp_bt_main.h"
+#include "esp_bt_device.h"
+#include "esp_hf_ag_api.h"
+#include "esp_gap_bt_api.h"
+#include "esp_console.h"
+#include <stdint.h>
+#include <string.h>
+#include <inttypes.h>
+
+#include "httpd.h"
+
 #define TAG "ESP32-SimpleSupport"
 
 LV_FONT_DECLARE(font_puhui_14_1);
 LV_FONT_DECLARE(font_awesome_14_1);
+
+/* event for handler "bt_av_hdl_stack_up */
+enum
+{
+    BT_APP_EVT_STACK_UP = 0,
+};
+
+static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
+{
+    if (bda == NULL || str == NULL || size < 18)
+    {
+        return NULL;
+    }
+
+    uint8_t *p = bda;
+    sprintf(str, "%02x:%02x:%02x:%02x:%02x:%02x",
+            p[0], p[1], p[2], p[3], p[4], p[5]);
+    return str;
+}
+
+char bda_str[18] = {0};
 
 class EspSimpleMl307Board : public Ml307Board
 {
 private:
     i2c_master_bus_handle_t display_i2c_bus_;
     Button boot_button_;
-    Button touch_button_; 
+    Button touch_button_;
 
     void InitializeDisplayI2c()
     {
@@ -51,7 +85,6 @@ private:
                                   { Application::GetInstance().StartListening(); });
         touch_button_.OnPressUp([this]()
                                 { Application::GetInstance().StopListening(); });
- 
     }
 
     // 物联网初始化，添加对 AI 可见设备
@@ -63,12 +96,12 @@ private:
     }
 
 public:
-EspSimpleMl307Board() : Ml307Board(ML307_TX_PIN, ML307_RX_PIN, 4096),
-                          boot_button_(BOOT_BUTTON_GPIO),
-                          touch_button_(TOUCH_BUTTON_GPIO)
+    EspSimpleMl307Board() : Ml307Board(ML307_TX_PIN, ML307_RX_PIN, 4096),
+                            boot_button_(BOOT_BUTTON_GPIO),
+                            touch_button_(TOUCH_BUTTON_GPIO)
     {
 
-        // InitializeDisplayI2c();
+        InitializeDisplayI2c();
         InitializeButtons();
         // InitializeIot();
     }
@@ -88,6 +121,8 @@ EspSimpleMl307Board() : Ml307Board(ML307_TX_PIN, ML307_RX_PIN, 4096),
         static NoAudioCodecDuplex audio_codec(AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
                                               AUDIO_I2S_GPIO_BCLK, AUDIO_I2S_GPIO_WS, AUDIO_I2S_GPIO_DOUT, AUDIO_I2S_GPIO_DIN);
 #endif
+
+        // static BtAudioCodec *audio_codec = new BtAudioCodec(AUDIO_I2S_SPK_GPIO_BCLK, AUDIO_I2S_SPK_GPIO_LRCK, AUDIO_I2S_SPK_GPIO_DOUT, AUDIO_I2S_MIC_GPIO_SCK, AUDIO_I2S_MIC_GPIO_WS, AUDIO_I2S_MIC_GPIO_DIN);
         return &audio_codec;
     }
 
@@ -99,15 +134,18 @@ EspSimpleMl307Board() : Ml307Board(ML307_TX_PIN, ML307_RX_PIN, 4096),
     }
 };
 
-
 class EspSimpleWifiBoard : public WifiBoard
 {
 private:
     Button boot_button_;
     Button touch_button_;
     Button asr_button_;
-    NoDisplay* display_;
+    NoDisplay *display_;
 
+    // BtAudioCodec *audio_codec = new BtAudioCodec(AUDIO_I2S_SPK_GPIO_BCLK, AUDIO_I2S_SPK_GPIO_LRCK, AUDIO_I2S_SPK_GPIO_DOUT, AUDIO_I2S_MIC_GPIO_SCK, AUDIO_I2S_MIC_GPIO_WS, AUDIO_I2S_MIC_GPIO_DIN);
+
+    NoAudioCodecDuplex *audio_codec = new NoAudioCodecDuplex(AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
+        AUDIO_I2S_GPIO_BCLK, AUDIO_I2S_GPIO_WS, AUDIO_I2S_GPIO_DOUT, AUDIO_I2S_GPIO_DIN);
     i2c_master_bus_handle_t display_i2c_bus_;
 
     void InitializeDisplayI2c()
@@ -146,6 +184,7 @@ private:
 
         boot_button_.OnClick([this]()
                              {
+            ESP_LOGI(TAG, "boot button clicked");                   
             auto& app = Application::GetInstance();
             if (app.GetDeviceState() == kDeviceStateStarting && !WifiStation::GetInstance().IsConnected()) {
                 ResetWifiConfiguration();
@@ -155,6 +194,7 @@ private:
 
         asr_button_.OnClick([this]()
                             {
+            ESP_LOGI(TAG, "asr button clicked");
             std::string wake_word="你好小智";
             Application::GetInstance().WakeWordInvoke(wake_word); });
 
@@ -177,24 +217,30 @@ private:
     }
 
 public:
-
     EspSimpleWifiBoard() : boot_button_(BOOT_BUTTON_GPIO), touch_button_(TOUCH_BUTTON_GPIO), asr_button_(ASR_BUTTON_GPIO)
     {
-        // InitializeDisplayI2c();
+
+        this->httpdServerStartUpCallback = start_webserver;
+        InitializeDisplayI2c();
         InitializeNoDisplay();
         InitializeButtons();
+
+        // start_webserver();
+        // return ;
     }
 
     virtual AudioCodec *GetAudioCodec() override
     {
-#ifdef AUDIO_I2S_METHOD_SIMPLEX
-        static NoAudioCodecSimplex audio_codec(AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
-                                               AUDIO_I2S_SPK_GPIO_BCLK, AUDIO_I2S_SPK_GPIO_LRCK, AUDIO_I2S_SPK_GPIO_DOUT, AUDIO_I2S_MIC_GPIO_SCK, AUDIO_I2S_MIC_GPIO_WS, AUDIO_I2S_MIC_GPIO_DIN);
-#else
-        static NoAudioCodecDuplex audio_codec(AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
-                                              AUDIO_I2S_GPIO_BCLK, AUDIO_I2S_GPIO_WS, AUDIO_I2S_GPIO_DOUT, AUDIO_I2S_GPIO_DIN);
-#endif
-        return &audio_codec;
+// #ifdef AUDIO_I2S_METHOD_SIMPLEX
+//         static NoAudioCodecSimplex audio_codec(AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
+//                                                AUDIO_I2S_SPK_GPIO_BCLK, AUDIO_I2S_SPK_GPIO_LRCK, AUDIO_I2S_SPK_GPIO_DOUT, AUDIO_I2S_MIC_GPIO_SCK, AUDIO_I2S_MIC_GPIO_WS, AUDIO_I2S_MIC_GPIO_DIN);
+// #else
+//         static NoAudioCodecDuplex audio_codec(AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
+//                                               AUDIO_I2S_GPIO_BCLK, AUDIO_I2S_GPIO_WS, AUDIO_I2S_GPIO_DOUT, AUDIO_I2S_GPIO_DIN);
+// #endif
+        // ESP_LOGI(TAG, "GetAudioCodec AUDIO_INPUT_SAMPLE_RATE %d AUDIO_OUTPUT_SAMPLE_RATE %d", AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE);
+        // ESP_LOGI(TAG, "GetAudioCodec AUDIO_I2S_GPIO_BCLK %d AUDIO_I2S_GPIO_WS %d AUDIO_I2S_GPIO_DOUT %d AUDIO_I2S_GPIO_DIN %d", AUDIO_I2S_GPIO_BCLK, AUDIO_I2S_GPIO_WS, AUDIO_I2S_GPIO_DOUT, AUDIO_I2S_GPIO_DIN);
+        return audio_codec;
     }
 
     // virtual Display* GetDisplay() override {

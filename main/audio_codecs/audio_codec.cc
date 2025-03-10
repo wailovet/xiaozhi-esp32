@@ -24,12 +24,13 @@ void AudioCodec::OnOutputReady(std::function<bool()> callback) {
 
 void AudioCodec::OutputData(std::vector<int16_t>& data) {
     Write(data.data(), data.size());
+    ESP_LOGD(TAG, "OutputData Write %d samples", data.size());
 }
 
 bool AudioCodec::InputData(std::vector<int16_t>& data) {
     int duration = 30;
     int input_frame_size = input_sample_rate_ / 1000 * duration * input_channels_;
-
+    ESP_LOGD(TAG, "InputData Read input_frame_size %d samples", input_frame_size);
     data.resize(input_frame_size);
     int samples = Read(data.data(), data.size());
     if (samples > 0) {

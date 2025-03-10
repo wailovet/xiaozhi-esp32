@@ -6,7 +6,7 @@
 #include <esp_codec_dev.h>
 #include <esp_codec_dev_defaults.h>
 
-class BtAudioCodecCodec : public AudioCodec
+class BtAudioCodec : public AudioCodec
 {
 private:
     const audio_codec_data_if_t *data_if_ = nullptr;
@@ -24,12 +24,20 @@ private:
     virtual int Write(const int16_t *data, int samples) override;
 
 public:
-    BtAudioCodec();
+    BtAudioCodec(gpio_num_t spk_bclk, gpio_num_t spk_ws, gpio_num_t spk_dout, gpio_num_t mic_sck, gpio_num_t mic_ws, gpio_num_t mic_din);
     virtual ~BtAudioCodec();
 
     virtual void SetOutputVolume(int volume) override;
     virtual void EnableInput(bool enable) override;
     virtual void EnableOutput(bool enable) override;
+
+    int flag = 0;
+    const int16_t *last_write_data;
+    int last_write_samples;
+    int current_sample_rate;
+
+    void Start();
 };
+static BtAudioCodec *BtAudioCodecInstance;
 
 #endif // _BT_AUDIO_CODEC_H

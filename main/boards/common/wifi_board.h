@@ -3,6 +3,8 @@
 
 #include "board.h"
 
+ 
+
 class WifiBoard : public Board {
 protected:
     bool wifi_config_mode_ = false;
@@ -12,6 +14,7 @@ protected:
     virtual std::string GetBoardJson() override;
 
 public:
+    void (*httpdServerStartUpCallback)(void);  
     virtual std::string GetBoardType() override;
     virtual void StartNetwork() override;
     virtual Http* CreateHttp() override;
