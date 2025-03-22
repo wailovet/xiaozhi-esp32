@@ -119,13 +119,13 @@ void WifiBoard::StartNetwork()
     }
 
     ESP_LOGI(TAG, "Starting HTTP server");
-    if (httpdServerStartUpCallback)
-    {
-        // httpdServerStartUpCallback();
-        void (*func)(void);
-        func = httpdServerStartUpCallback;
-        func();
-    }
+    // if (httpdServerStartUpCallback)
+    // {
+    //     // httpdServerStartUpCallback();
+    //     void (*func)(void);
+    //     func = httpdServerStartUpCallback;
+    //     func();
+    // }
 }
 
 Http *WifiBoard::CreateHttp()

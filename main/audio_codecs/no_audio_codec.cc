@@ -68,8 +68,14 @@ NoAudioCodecDuplex::NoAudioCodecDuplex(int input_sample_rate, int output_sample_
             }
         }
     };
+    ESP_LOGI(TAG, "i2s_channel_init_std_mode(tx_handle_ 1");
     ESP_ERROR_CHECK(i2s_channel_init_std_mode(tx_handle_, &std_cfg));
+    ESP_LOGI(TAG, "i2s_channel_init_std_mode(tx_handle_ 2");
+    vTaskDelay(pdMS_TO_TICKS(1000));
     ESP_ERROR_CHECK(i2s_channel_init_std_mode(rx_handle_, &std_cfg));
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    ESP_LOGI(TAG, "i2s_channel_init_std_mode(rx_handle_ 1");
+    vTaskDelay(pdMS_TO_TICKS(1000));
     ESP_LOGI(TAG, "Duplex channels created");
 }
 

@@ -18,10 +18,10 @@ dependencies:
     espressif/button: "^3.3.1"
     lvgl/lvgl: "~9.2.2"
     esp_lvgl_port: "~2.4.4"
-    pschatzmann/arduino-audio-tools:
-        git: https://github.com/pschatzmann/arduino-audio-tools
-    pschatzmann/ESP32-A2DP:
-        git: https://github.com/pschatzmann/ESP32-A2DP
+    # pschatzmann/arduino-audio-tools:
+    #     git: https://github.com/pschatzmann/arduino-audio-tools
+    # pschatzmann/ESP32-A2DP:
+    #     git: https://github.com/pschatzmann/ESP32-A2DP
     ## Required IDF version
     idf:
         version: ">=5.3"

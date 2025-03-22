@@ -30,6 +30,7 @@ void WebsocketProtocol::SendAudio(const std::vector<uint8_t>& data) {
         return;
     }
 
+    ESP_LOGI(TAG, "WebsocketProtocol::SendAudio: 1:%2x, 2:%2x, 3:%2x, 4:%2x", data[0], data[1], data[2], data[3]); 
     websocket_->Send(data.data(), data.size(), true);
 }
 

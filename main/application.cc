@@ -215,9 +215,10 @@ void Application::Alert(const char *status, const char *message, const char *emo
     // display->SetStatus(status);
     // display->SetEmotion(emotion);
     // display->SetChatMessage("system", message);
-    // if (!sound.empty()) {
-    //     PlayLocalFile(sound.data(), sound.size());
-    // }
+    if (!sound.empty())
+    {
+        PlayLocalFile(sound.data(), sound.size());
+    }
 }
 
 void Application::PlayLocalFile(const char *data, size_t size)
@@ -333,36 +334,43 @@ void Application::Start()
 
     // For ML307 boards, we use complexity 5 to save bandwidth
     // For other boards, we use complexity 3 to save CPU
-    if (board.GetBoardType() == "ml307") {
+    if (board.GetBoardType() == "ml307")
+    {
         ESP_LOGI(TAG, "ML307 board detected, setting opus encoder complexity to 5");
         opus_encoder_->SetComplexity(5);
-    } else {
+    }
+    else
+    {
         ESP_LOGI(TAG, "WiFi board detected, setting opus encoder complexity to 3");
         opus_encoder_->SetComplexity(3);
     }
 
-    if (codec->input_sample_rate() != 16000) {
+    if (codec->input_sample_rate() != 16000)
+    {
         input_resampler_.Configure(codec->input_sample_rate(), 16000);
         reference_resampler_.Configure(codec->input_sample_rate(), 16000);
     }
-    codec->OnInputReady([this, codec]() {
+    codec->OnInputReady([this, codec]()
+                        {
         BaseType_t higher_priority_task_woken = pdFALSE;
         xEventGroupSetBitsFromISR(event_group_, AUDIO_INPUT_READY_EVENT, &higher_priority_task_woken);
-        return higher_priority_task_woken == pdTRUE;
-    });
-    codec->OnOutputReady([this]() {
+        return higher_priority_task_woken == pdTRUE; });
+    codec->OnOutputReady([this]()
+                         {
         BaseType_t higher_priority_task_woken = pdFALSE;
         xEventGroupSetBitsFromISR(event_group_, AUDIO_OUTPUT_READY_EVENT, &higher_priority_task_woken);
-        return higher_priority_task_woken == pdTRUE;
-    });
+        return higher_priority_task_woken == pdTRUE; });
 
     codec->Start();
 
     /* Start the main loop */
     xTaskCreate([](void *arg)
                 {
+        ESP_LOGI(TAG, "Main loop task init");
         Application* app = (Application*)arg;
+        ESP_LOGI(TAG, "Main loop task started");
         app->MainLoop();
+        ESP_LOGE(TAG, "Main loop task exited");
         vTaskDelete(NULL); }, "main_loop", 4096 * 2, this, 2, nullptr);
 
     /* Wait for the network to be ready */
@@ -483,6 +491,7 @@ void Application::Start()
     // }, "check_new_version", 4096 * 2, this, 1, nullptr);
 
 #if CONFIG_USE_AUDIO_PROCESSING
+    ESP_LOGI(TAG, "Initializing audio processor");
     audio_processor_.Initialize(codec->input_channels(), codec->input_reference());
     audio_processor_.OnOutput([this](std::vector<int16_t> &&data)
                               { background_task_->Schedule([this, data = std::move(data)]() mutable
@@ -588,10 +597,12 @@ void Application::MainLoop()
 {
     while (true)
     {
+        // ESP_LOGI(TAG, "MainLoop waiting...");
         auto bits = xEventGroupWaitBits(event_group_,
-                                        SCHEDULE_EVENT | AUDIO_INPUT_READY_EVENT | AUDIO_OUTPUT_READY_EVENT,
+                                        SCHEDULE_EVENT | AUDIO_INPUT_READY_EVENT | AUDIO_OUTPUT_READY_EVENT, // 扬声器
                                         pdTRUE, pdFALSE, portMAX_DELAY);
 
+        // ESP_LOGI(TAG, "MainLoop: bits=%d", bits);
         if (bits & AUDIO_INPUT_READY_EVENT)
         {
             InputAudio();
@@ -677,13 +688,23 @@ void Application::OutputAudio()
 
 void Application::InputAudio()
 {
+    // ESP_LOGI(TAG, "InputAudio");
     auto codec = Board::GetInstance().GetAudioCodec();
     std::vector<int16_t> data;
     if (!codec->InputData(data))
     {
+        ESP_LOGI(TAG, "Failed to read audio data");
         return;
     }
-
+    // ESP_LOGI(TAG, "codec->input_sample_rate(): %d", codec->input_sample_rate());
+    // 对data求平均
+    // int sum = 0;
+    // for (int i = 0; i < data.size(); i++)
+    // {
+    //     sum += data[i];
+    // }
+    // int avg = sum / data.size();
+    // ESP_LOGI(TAG, "Input audio data: %d", avg);
     if (codec->input_sample_rate() != 16000)
     {
         if (codec->input_channels() == 2)
@@ -727,7 +748,10 @@ void Application::InputAudio()
     if (device_state_ == kDeviceStateListening)
     {
         background_task_->Schedule([this, data = std::move(data)]() mutable
-                                   { opus_encoder_->Encode(std::move(data), [this](std::vector<uint8_t> &&opus)
+                                   {
+                                  
+    // ESP_LOGI(TAG, "Input audio data: 1:%X, 2:%X, 3:%X, 4:%X", data[0], data[1], data[2], data[3]); 
+                                    opus_encoder_->Encode(std::move(data), [this](std::vector<uint8_t> &&opus)
                                                            { Schedule([this, opus = std::move(opus)]()
                                                                       { protocol_->SendAudio(opus); }); }); });
     }
