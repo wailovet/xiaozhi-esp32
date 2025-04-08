@@ -96,6 +96,13 @@ elseif(CONFIG_BOARD_TYPE_ESP32S3_Touch_LCD_1_85)
     set(BOARD_TYPE "esp32-s3-touch-lcd-1.85")
 elseif(CONFIG_BOARD_TYPE_ESP32S3_Touch_LCD_1_46)
     set(BOARD_TYPE "esp32-s3-touch-lcd-1.46")
+elseif(CONFIG_BOARD_TYPE_ESP32S2_MZ)
+    set(BOARD_TYPE "esp32s2-mz") 
+    list(REMOVE_ITEM SOURCES "audio_codecs/box_audio_codec.cc"
+                             "audio_codecs/es8311_audio_codec.cc"
+                             "audio_codecs/es8388_audio_codec.cc" 
+                             )
+
 elseif(CONFIG_BOARD_TYPE_BREAD_COMPACT_WIFI_LCD)
     set(BOARD_TYPE "bread-compact-wifi-lcd")
 elseif(CONFIG_BOARD_TYPE_TUDOUZI)
